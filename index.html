@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>RAMPART — OT segmentation policy generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#0e1214; --panel:#111618; --panel2:#0c1012; --hair:#27302f; --hair2:#1a2120;
+  --ink:#ddd6c6; --dim:#8b877a; --faint:#565b55;
+  --sodium:#f2a24a; --sodium-dim:#b9803f; --alarm:#e0512f; --ok:#6fae5a; --steel:#8ba4a8; --warn:#e6b455;
+  --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace; --disp:'Saira Condensed',var(--sans);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);font-family:var(--sans);overflow:hidden}
+button{font-family:inherit}
+#app{display:grid;grid-template-columns:330px 1fr 400px;height:100vh}
+.col{display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--hair) transparent}
+.col::-webkit-scrollbar{width:7px}.col::-webkit-scrollbar-thumb{background:var(--hair)}
+#zones{background:var(--panel);border-right:1px solid var(--hair)}
+#mid{background:var(--ground)}
+#out{background:var(--panel);border-left:1px solid var(--hair)}
+
+.mast{padding:20px 22px 16px;border-bottom:1px solid var(--hair)}
+.kick{font-family:var(--mono);font-size:9.5px;letter-spacing:3px;text-transform:uppercase;color:var(--sodium);display:flex;align-items:center;gap:8px}
+.kick::before{content:"";width:14px;height:2px;background:var(--sodium)}
+.title{font-family:var(--disp);font-weight:700;font-size:40px;line-height:.92;letter-spacing:-.3px;margin:8px 0 0}
+.dek{font-size:12px;line-height:1.5;color:var(--dim);margin-top:8px}
+.dek b{color:var(--ink);font-weight:500}
+
+.sect{padding:16px 22px;border-bottom:1px solid var(--hair)}
+.sh{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.sh .add{cursor:pointer;color:var(--sodium);font-size:10px;letter-spacing:.5px}
+.sh .add:hover{color:var(--ink)}
+
+/* zone card */
+.zone{border:1px solid var(--hair);margin-bottom:10px;background:var(--panel2)}
+.zone .zh{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--hair2)}
+.zone .lvl{font-family:var(--disp);font-weight:700;font-size:11px;letter-spacing:.5px;color:var(--ground);background:var(--sodium);padding:2px 6px;min-width:34px;text-align:center}
+.zone .zn{flex:1;background:transparent;border:0;color:var(--ink);font-family:var(--disp);font-weight:600;font-size:15px;padding:2px 0}
+.zone .zn:focus{outline:1px solid var(--sodium-dim);outline-offset:2px}
+.zone .del{cursor:pointer;color:var(--faint);font-family:var(--mono);font-size:13px}
+.zone .del:hover{color:var(--alarm)}
+.zone .zb{padding:8px 10px}
+.zone .snet{width:100%;background:var(--panel);border:1px solid var(--hair);color:var(--sodium);font-family:var(--mono);font-size:11px;padding:5px 7px;margin-bottom:8px}
+.zone .snet:focus{outline:none;border-color:var(--sodium-dim)}
+.assets{display:flex;flex-wrap:wrap;gap:5px}
+.atag{font-family:var(--mono);font-size:10px;color:var(--ink);background:var(--panel);border:1px solid var(--hair);padding:3px 7px;cursor:default;display:flex;align-items:center;gap:5px}
+.atag .x{cursor:pointer;color:var(--faint)}.atag .x:hover{color:var(--alarm)}
+.aadd{position:relative}
+.aadd .ab{cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--sodium);border:1px dashed var(--sodium-dim);padding:3px 8px;background:transparent}
+.aadd .menu{position:absolute;z-index:20;left:0;top:100%;margin-top:4px;background:var(--panel);border:1px solid var(--hair);min-width:180px;max-height:230px;overflow-y:auto;display:none}
+.aadd.open .menu{display:block}
+.aadd .menu div{padding:7px 10px;font-family:var(--mono);font-size:11px;color:var(--ink);cursor:pointer;border-bottom:1px solid var(--hair2)}
+.aadd .menu div:hover{background:rgba(242,162,74,.08);color:var(--sodium)}
+.aadd .menu small{color:var(--faint)}
+
+.btn{cursor:pointer;font-family:var(--disp);font-weight:600;letter-spacing:1px;text-transform:uppercase;font-size:14px;color:var(--ground);background:var(--sodium);border:none;padding:12px;width:100%;transition:filter .12s}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--sodium);border:1px solid var(--sodium-dim)}
+.btn.ghost:hover{background:rgba(242,162,74,.08);filter:none}
+
+/* matrix */
+.matrix{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px}
+.matrix th{color:var(--faint);font-weight:400;padding:5px 4px;text-align:center;white-space:nowrap}
+.matrix th.rowh{text-align:right;padding-right:9px;color:var(--dim)}
+.matrix td{width:34px;height:30px;text-align:center;border:1px solid var(--hair2)}
+.cell{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px}
+.cell.allow{background:rgba(242,162,74,.16);color:var(--sodium)}
+.cell.warn{background:rgba(230,180,85,.16);color:var(--warn)}
+.cell.high{background:rgba(224,81,47,.18);color:var(--alarm)}
+.cell.self{background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(139,164,168,.08) 3px,rgba(139,164,168,.08) 5px)}
+.mleg{display:flex;gap:16px;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--dim)}
+.mleg i{display:inline-block;width:11px;height:11px;margin-right:5px;vertical-align:middle}
+
+/* conduit list */
+.conduit{display:grid;grid-template-columns:1fr 16px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--hair2)}
+.conduit .z{font-family:var(--disp);font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conduit .arrow{color:var(--sodium);font-family:var(--mono)}
+.conduit .svc{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.conduit .sv{font-family:var(--mono);font-size:9.5px;color:var(--dim);background:var(--panel2);border:1px solid var(--hair2);padding:1px 6px}
+.conduit .sv.clear{color:var(--warn);border-color:rgba(230,180,85,.3)}
+.conduit .flag{grid-column:1 / -1;font-family:var(--mono);font-size:10px;line-height:1.45;margin-top:5px;padding-left:10px;border-left:2px solid}
+.conduit .flag.warn{color:var(--warn);border-color:var(--warn)}
+.conduit .flag.high{color:var(--alarm);border-color:var(--alarm)}
+.conduit .rm{cursor:pointer;color:var(--faint);font-family:var(--mono);font-size:13px}
+.conduit .rm:hover{color:var(--alarm)}
+.addflow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:12px}
+.addflow select{background:var(--panel);border:1px solid var(--hair);color:var(--ink);font-family:var(--mono);font-size:11px;padding:6px}
+.addflow .go{cursor:pointer;background:var(--sodium-dim);color:var(--ground);border:0;font-family:var(--mono);font-size:11px;padding:0 12px}
+
+/* output */
+.tabs{display:flex;border-bottom:1px solid var(--hair)}
+.tab{cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;color:var(--dim);padding:10px 12px;border-bottom:2px solid transparent}
+.tab.on{color:var(--sodium);border-color:var(--sodium)}
+.tab:hover{color:var(--ink)}
+.outbar{display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--hair2)}
+.obtn{cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.5px;color:var(--sodium);background:transparent;border:1px solid var(--sodium-dim);padding:5px 11px}
+.obtn:hover{background:rgba(242,162,74,.08)}
+pre#code{margin:0;padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--ink);white-space:pre;overflow:auto;flex:1}
+pre#code .c{color:var(--faint)} pre#code .k{color:var(--sodium)} pre#code .d{color:var(--alarm)}
+
+.findings{padding:14px 16px;border-top:1px solid var(--hair)}
+.fh{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+.finding{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--hair2);font-size:12px;line-height:1.45}
+.finding .ic{font-family:var(--disp);font-weight:700;font-size:11px;padding:1px 5px;height:fit-content;white-space:nowrap}
+.finding.high .ic{color:var(--alarm);border:1px solid var(--alarm)}
+.finding.warn .ic{color:var(--warn);border:1px solid var(--warn)}
+.finding.ok .ic{color:var(--ok);border:1px solid var(--ok)}
+.finding .ft{color:var(--dim)} .finding .ft b{color:var(--ink);font-weight:500}
+.foot{padding:14px 16px;font-family:var(--mono);font-size:10px;color:var(--faint);line-height:1.5}
+.foot a{color:var(--sodium-dim);text-decoration:none}.foot a:hover{color:var(--sodium)}
+
+.preset{width:100%;background:var(--panel2);border:1px solid var(--hair);color:var(--ink);font-family:var(--mono);font-size:12px;padding:9px}
+.preset:focus{outline:none;border-color:var(--sodium-dim)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.actions .btn{font-size:11px;padding:9px}
+.modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(6,9,10,.85)}
+.modal.hidden{display:none}
+.diagsheet{background:var(--panel);border:1px solid var(--hair);max-width:96vw;max-height:92vh;overflow:auto;padding:18px}
+.diagsheet .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:20px}
+.diagsheet .dh .t{font-family:var(--disp);font-weight:700;font-size:20px}
+.diagsheet .dh .x{cursor:pointer;color:var(--dim);font-family:var(--mono);margin-left:12px}
+.diagsheet .dh .x:hover{color:var(--ink)}
+#printdoc{display:none}
+@media print{
+  @page{margin:16mm}
+  body *{visibility:hidden}
+  #printdoc,#printdoc *{visibility:visible}
+  #printdoc{display:block;position:absolute;left:0;top:0;width:100%;color:#000;background:#fff}
+}
+@media (max-width:1100px){#app{grid-template-columns:1fr;grid-template-rows:auto auto auto;height:auto;overflow:auto}.col{overflow:visible}html,body{overflow:auto}}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ZONES -->
+  <div id="zones" class="col">
+    <div class="mast">
+      <div class="kick">IEC 62443 · Purdue</div>
+      <h1 class="title">RAMPART</h1>
+      <p class="dek">Describe your <b>zones</b> and what's in them. Rampart writes the <b>deny-by-default</b> segmentation policy — as real firewall rules.</p>
+    </div>
+    <div class="sect">
+      <div class="sh">Start from a template</div>
+      <select id="preset" class="preset"></select>
+    </div>
+    <div class="sect">
+      <div class="sh">Zones <span class="add" id="addZone">+ add zone</span></div>
+      <div id="zoneList"></div>
+    </div>
+    <div class="sect" style="border-bottom:0">
+      <button class="btn" id="genBtn">Generate baseline policy</button>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:9px;line-height:1.5">Derives the conduits your assets need, applies Purdue/62443 boundary rules, and flags anything unsafe.</div>
+      <div class="actions">
+        <button class="btn ghost" id="importBtn">Import CSV / JSON</button>
+        <button class="btn ghost" id="shareBtn">Share link</button>
+      </div>
+      <input type="file" id="fileIn" accept=".csv,.json,.tsv,.txt" style="display:none">
+    </div>
+  </div>
+
+  <!-- MID: matrix + conduits -->
+  <div id="mid" class="col">
+    <div class="sect">
+      <div class="sh">Conduit matrix · source → destination</div>
+      <div id="matrixWrap"></div>
+      <div class="mleg">
+        <span><i style="background:rgba(242,162,74,.5)"></i>allowed</span>
+        <span><i style="background:rgba(230,180,85,.5)"></i>allowed · review</span>
+        <span><i style="background:rgba(224,81,47,.5)"></i>violates boundary</span>
+        <span><i style="background:var(--hair)"></i>denied (default)</span>
+      </div>
+    </div>
+    <div class="sect" style="border-bottom:0">
+      <div class="sh">Allowed conduits <span style="color:var(--faint)" id="conduitCount"></span></div>
+      <div id="conduitList"></div>
+      <div class="addflow">
+        <select id="flowSrc"></select>
+        <select id="flowDst"></select>
+        <button class="go" id="flowAdd">+ flow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OUT: rules + findings -->
+  <div id="out" class="col">
+    <div class="tabs" id="tabs"></div>
+    <div class="outbar"><button class="obtn" id="copyBtn">Copy</button><button class="obtn" id="dlBtn">Download</button><button class="obtn" id="diagBtn">Diagram</button><button class="obtn" id="docBtn">Policy doc</button></div>
+    <pre id="code"></pre>
+    <div class="findings">
+      <div class="fh">Findings</div>
+      <div id="findingList"></div>
+    </div>
+    <div class="foot">Deny-by-default. Rules are a reviewed starting point — validate against your process before deploying. Part of the <a href="https://github.com/bariskececi" target="_blank" rel="noopener">GNSAC OT toolkit</a>.</div>
+  </div>
+</div>
+
+<div class="modal hidden" id="diagModal"><div class="diagsheet">
+  <div class="dh"><span class="t">Network segmentation diagram</span><span><button class="obtn" id="diagDl">Download SVG</button><span class="x" id="diagClose">✕ esc</span></span></div>
+  <div id="diagSvg"></div>
+</div></div>
+<div id="printdoc"></div>
+<script>
+"use strict";
+// ---------- catalogs ----------
+const SVC={
+  modbus:{n:"Modbus",proto:"tcp",port:502,clear:true}, s7:{n:"S7comm",proto:"tcp",port:102,clear:true},
+  enip:{n:"EtherNet/IP",proto:"tcp",port:44818,clear:true}, dnp3:{n:"DNP3",proto:"tcp",port:20000,clear:true},
+  iec104:{n:"IEC-104",proto:"tcp",port:2404,clear:true}, opcua:{n:"OPC-UA",proto:"tcp",port:4840,clear:false},
+  mssql:{n:"MSSQL",proto:"tcp",port:1433,clear:false}, https:{n:"HTTPS",proto:"tcp",port:443,clear:false},
+  rdp:{n:"RDP",proto:"tcp",port:3389,clear:false}, ssh:{n:"SSH",proto:"tcp",port:22,clear:false},
+  wsus:{n:"WSUS",proto:"tcp",port:8530,clear:false}, ntp:{n:"NTP",proto:"udp",port:123,clear:true},
+  syslog:{n:"Syslog",proto:"udp",port:514,clear:true}, bacnet:{n:"BACnet",proto:"udp",port:47808,clear:true},
+};
+const ASSET={
+  plc:{n:"PLC",listen:["modbus","s7","enip"]}, rtu:{n:"RTU",listen:["dnp3","iec104"]},
+  hmi:{n:"HMI",listen:[]}, scada:{n:"SCADA server",listen:["opcua"]},
+  hist:{n:"Historian",listen:["opcua","mssql","https"]}, ews:{n:"Eng. workstation",listen:["rdp"]},
+  jump:{n:"Jump / remote access",listen:["rdp","ssh"]}, patch:{n:"Patch / WSUS",listen:["wsus"]},
+  ad:{n:"AD / DNS",listen:[]}, ntp:{n:"NTP server",listen:["ntp"]}, siem:{n:"Syslog / SIEM",listen:["syslog"]},
+  bas:{n:"BAS controller",listen:["bacnet"]}, bms:{n:"BMS server",listen:["bacnet","https"]},
+  sis:{n:"Safety PLC (SIS)",listen:[]},
+};
+// source asset -> dest asset -> service keys (dest listens)
+const REL={
+  hmi:{plc:["modbus","s7","enip"],rtu:["dnp3","iec104"],scada:["opcua"],bas:["bacnet"]},
+  scada:{plc:["modbus","s7","enip"],rtu:["dnp3","iec104"],hist:["opcua"]},
+  bms:{bas:["bacnet"]},
+  hist:{scada:["opcua"],hist:["opcua","mssql"]},
+  ews:{plc:["s7","enip"],rtu:["dnp3"]},
+  jump:{ews:["rdp"],hmi:["rdp"],scada:["rdp"],bms:["rdp","https"]},
+  ad:{}, patch:{},
+};
+// generic infra: any OT-ish asset -> these dest asset types
+const INFRA={ ntp:["ntp"], siem:["syslog"], patch:["wsus"] };
+const OT_SOURCES=["plc","rtu","hmi","scada","hist","ews","bas","bms"];
+
+// ---------- state ----------
+let conduits=[]; // {src,dst,svcs:[keys], severity:'ok'|'warn'|'high', flag:''}
+
+// industry presets
+const PRESETS={
+  default:[
+    {id:"ent",name:"Enterprise (IT)",lvl:5,net:"10.10.50.0/24",assets:["ad"]},
+    {id:"idmz",name:"Industrial DMZ",lvl:3.5,net:"10.10.35.0/24",assets:["jump","patch","ntp","siem","hist"]},
+    {id:"ops",name:"Operations",lvl:3,net:"10.10.30.0/24",assets:["scada","hist","ews"]},
+    {id:"sup",name:"Supervisory",lvl:2,net:"10.10.20.0/24",assets:["hmi"]},
+    {id:"ctl",name:"Control",lvl:1,net:"10.10.10.0/24",assets:["plc","rtu"]},
+    {id:"saf",name:"Safety (SIS)",lvl:0.5,net:"10.10.5.0/24",assets:["sis"]},
+  ],
+  water:[
+    {id:"ent",name:"Corporate IT",lvl:5,net:"10.20.50.0/24",assets:["ad"]},
+    {id:"idmz",name:"Industrial DMZ",lvl:3.5,net:"10.20.35.0/24",assets:["jump","patch","ntp","siem","hist"]},
+    {id:"scada",name:"SCADA / Operations",lvl:3,net:"10.20.30.0/24",assets:["scada","hist","ews"]},
+    {id:"hmi",name:"Plant HMI",lvl:2,net:"10.20.20.0/24",assets:["hmi"]},
+    {id:"plc",name:"Treatment PLCs",lvl:1,net:"10.20.10.0/24",assets:["plc"]},
+    {id:"remote",name:"Remote Pump/Lift Stations",lvl:1,net:"10.20.60.0/24",assets:["rtu"]},
+    {id:"saf",name:"Safety (SIS)",lvl:0.5,net:"10.20.5.0/24",assets:["sis"]},
+  ],
+  power:[
+    {id:"ent",name:"Corporate IT",lvl:5,net:"172.16.50.0/24",assets:["ad"]},
+    {id:"idmz",name:"Electronic Security Perimeter DMZ",lvl:3.5,net:"172.16.35.0/24",assets:["jump","patch","ntp","siem","hist"]},
+    {id:"cc",name:"Control Center (SCADA/EMS)",lvl:3,net:"172.16.30.0/24",assets:["scada","hist","ews"]},
+    {id:"sub",name:"Substation Station Bus",lvl:2,net:"172.16.20.0/24",assets:["rtu"]},
+    {id:"bay",name:"Bay / Protection IEDs",lvl:1,net:"172.16.10.0/24",assets:["rtu","plc"]},
+    {id:"saf",name:"Protection / Safety",lvl:0.5,net:"172.16.5.0/24",assets:["sis"]},
+  ],
+  mfg:[
+    {id:"ent",name:"Enterprise / ERP",lvl:5,net:"10.30.50.0/24",assets:["ad"]},
+    {id:"idmz",name:"Industrial DMZ",lvl:3.5,net:"10.30.35.0/24",assets:["jump","patch","ntp","siem","hist"]},
+    {id:"mes",name:"MES / Site Operations",lvl:3,net:"10.30.30.0/24",assets:["scada","hist","ews"]},
+    {id:"sup",name:"Line Supervisory",lvl:2,net:"10.30.20.0/24",assets:["hmi"]},
+    {id:"cell",name:"Cell / Machine Control",lvl:1,net:"10.30.10.0/24",assets:["plc"]},
+    {id:"saf",name:"Safety (SIS)",lvl:0.5,net:"10.30.5.0/24",assets:["sis"]},
+  ],
+  building:[
+    {id:"ent",name:"Corporate IT",lvl:5,net:"10.40.50.0/24",assets:["ad"]},
+    {id:"idmz",name:"IT/OT DMZ",lvl:3.5,net:"10.40.35.0/24",assets:["jump","patch","ntp","siem"]},
+    {id:"bms",name:"BMS Supervisory",lvl:3,net:"10.40.30.0/24",assets:["bms","hist","ews"]},
+    {id:"fld",name:"Field Controllers",lvl:1,net:"10.40.10.0/24",assets:["bas"]},
+  ],
+};
+const PRESET_NAMES={default:"Purdue / IEC 62443 (default)",water:"Water / Wastewater",power:"Power substation",mfg:"Manufacturing",building:"Building automation"};
+let zones=JSON.parse(JSON.stringify(PRESETS.default));
+let removed=new Set(); // "src>dst" baseline entries the user deleted
+let tab="matrix";
+
+const $=s=>document.querySelector(s), el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+const zoneById=id=>zones.find(z=>z.id===id);
+const uid=()=>'z'+Math.random().toString(36).slice(2,7);
+
+// ---------- render zones ----------
+function renderZones(){
+  const list=$('#zoneList'); list.innerHTML='';
+  zones.forEach(z=>{
+    const card=el('div','zone');
+    const zh=el('div','zh');
+    zh.innerHTML=`<span class="lvl">L${z.lvl}</span>`;
+    const nm=el('input','zn'); nm.value=z.name; nm.oninput=()=>{z.name=nm.value;renderMatrix();renderConduits();genOutput();};
+    zh.appendChild(nm);
+    const del=el('span','del'); del.textContent='✕'; del.title='remove zone';
+    del.onclick=()=>{zones=zones.filter(x=>x!==z);refreshFlowSelectors();renderAll();};
+    zh.appendChild(del);
+    card.appendChild(zh);
+    const zb=el('div','zb');
+    const net=el('input','snet'); net.value=z.net; net.spellcheck=false;
+    net.oninput=()=>{z.net=net.value;genOutput();};
+    zb.appendChild(net);
+    const assets=el('div','assets');
+    z.assets.forEach(a=>{
+      const tag=el('span','atag'); tag.innerHTML=`${ASSET[a]?ASSET[a].n:a}<span class="x">✕</span>`;
+      tag.querySelector('.x').onclick=()=>{z.assets=z.assets.filter(x=>x!==a);renderZones();};
+      assets.appendChild(tag);
+    });
+    // add-asset dropdown
+    const aadd=el('span','aadd');
+    const ab=el('button','ab'); ab.textContent='+ asset'; aadd.appendChild(ab);
+    const menu=el('div','menu');
+    Object.keys(ASSET).forEach(k=>{ if(z.assets.includes(k))return;
+      const it=el('div'); const ls=ASSET[k].listen.map(s=>SVC[s].n).join(', ');
+      it.innerHTML=`${ASSET[k].n}${ls?' <small>· '+ls+'</small>':''}`;
+      it.onclick=()=>{z.assets.push(k);renderZones();};
+      menu.appendChild(it);
+    });
+    aadd.appendChild(menu);
+    ab.onclick=e=>{e.stopPropagation();document.querySelectorAll('.aadd').forEach(x=>{if(x!==aadd)x.classList.remove('open')});aadd.classList.toggle('open');};
+    assets.appendChild(aadd);
+    zb.appendChild(assets);
+    card.appendChild(zb);
+    list.appendChild(card);
+  });
+}
+document.addEventListener('click',()=>document.querySelectorAll('.aadd').forEach(x=>x.classList.remove('open')));
+
+$('#addZone').onclick=()=>{zones.push({id:uid(),name:"New zone",lvl:3,net:"10.10.99.0/24",assets:[]});refreshFlowSelectors();renderZones();};
+
+// ---------- boundary validation ----------
+function classify(src,dst){
+  const a=zoneById(src), b=zoneById(dst); if(!a||!b)return {severity:'ok',flag:''};
+  // safety zone: only reachable from an engineering path (a zone containing EWS), else high
+  if(b.id==='saf' || b.assets.includes('sis')){
+    const srcHasEws=a.assets.includes('ews');
+    if(!srcHasEws) return {severity:'high',flag:'Safety (SIS) zone must stay isolated — permit only a controlled engineering path, or air-gap it.'};
+    return {severity:'warn',flag:'Engineering access to Safety — keep this tightly controlled, logged, and normally disabled.'};
+  }
+  if(a.assets.includes('sis')) return {severity:'high',flag:'Safety zone should not initiate outbound to other zones.'};
+  const hi=Math.max(a.lvl,b.lvl), lo=Math.min(a.lvl,b.lvl);
+  const isDMZ=z=>Math.abs(z-3.5)<0.01;
+  // IT (>=4) to OT (<=3) must traverse the Industrial DMZ
+  if(hi>=4 && lo<=3 && !isDMZ(a.lvl) && !isDMZ(b.lvl))
+    return {severity:'high',flag:'IT↔OT traffic must terminate in the Industrial DMZ (L3.5), never reach control directly.'};
+  // skipping a level
+  if((hi-lo)>2 && !isDMZ(a.lvl) && !isDMZ(b.lvl))
+    return {severity:'warn',flag:'Conduit spans multiple Purdue levels — prefer a broker/replica in the adjacent zone.'};
+  return {severity:'ok',flag:''};
+}
+
+// ---------- derive baseline conduits ----------
+function deriveBaseline(){
+  const map={}; // key src>dst -> Set(svc)
+  const addPair=(src,dst,svcs)=>{ if(src===dst)return; const k=src+'>'+dst; (map[k]=map[k]||new Set()); svcs.forEach(s=>map[k].add(s)); };
+  // control/data relationships
+  zones.forEach(A=>zones.forEach(B=>{ if(A===B)return;
+    A.assets.forEach(sa=>{ const r=REL[sa]; if(!r)return;
+      B.assets.forEach(da=>{ if(r[da]) addPair(A.id,B.id,r[da].filter(s=>SVC[s])); });
+    });
+  }));
+  // infra: OT zones -> zone hosting ntp/siem/patch
+  zones.forEach(A=>{ const hasOT=A.assets.some(a=>OT_SOURCES.includes(a));
+    if(!hasOT)return;
+    zones.forEach(B=>{ if(A===B)return;
+      Object.keys(INFRA).forEach(destAsset=>{ if(B.assets.includes(destAsset)) addPair(A.id,B.id,INFRA[destAsset]); });
+    });
+  });
+  // enterprise -> DMZ jump (remote access lands in DMZ)
+  const ent=zones.find(z=>z.lvl>=4), dmz=zones.find(z=>Math.abs(z.lvl-3.5)<0.01);
+  if(ent&&dmz&&dmz.assets.includes('jump')) addPair(ent.id,dmz.id,['rdp','https']);
+  // build conduit list, honoring user removals
+  conduits=[];
+  Object.keys(map).forEach(k=>{ if(removed.has(k))return;
+    const [src,dst]=k.split('>'); const c=classify(src,dst);
+    conduits.push({src,dst,svcs:[...map[k]],severity:c.severity,flag:c.flag});
+  });
+  sortConduits();
+}
+function sortConduits(){ const order=z=>({[5]:0,[3.5]:1,[3]:2,[2]:3,[1]:4,[0.5]:5}[zoneById(z)?.lvl]??9);
+  conduits.sort((a,b)=>order(a.src)-order(b.src)||order(a.dst)-order(b.dst)); }
+
+// ---------- matrix ----------
+function renderMatrix(){
+  const wrap=$('#matrixWrap'); const t=el('table','matrix');
+  const head=el('tr'); head.appendChild(el('th','rowh')); 
+  zones.forEach(z=>{const th=el('th');th.textContent='L'+z.lvl;head.appendChild(th);});
+  t.appendChild(head);
+  zones.forEach(a=>{ const tr=el('tr'); const rh=el('th','rowh'); rh.textContent=a.name+' · L'+a.lvl; tr.appendChild(rh);
+    zones.forEach(b=>{ const td=el('td'); const cell=el('div','cell');
+      if(a===b){cell.className='cell self';}
+      else{ const c=conduits.find(x=>x.src===a.id&&x.dst===b.id);
+        if(c){cell.classList.add(c.severity==='high'?'high':c.severity==='warn'?'warn':'allow');cell.textContent=c.severity==='high'?'✕':'●';}
+      }
+      td.appendChild(cell); tr.appendChild(td);
+    });
+    t.appendChild(tr);
+  });
+  wrap.innerHTML=''; wrap.appendChild(t);
+}
+
+// ---------- conduit list ----------
+function renderConduits(){
+  const list=$('#conduitList'); list.innerHTML='';
+  $('#conduitCount').textContent=conduits.length?('· '+conduits.length):'· none yet';
+  conduits.forEach((c,i)=>{
+    const row=el('div','conduit');
+    const a=zoneById(c.src), b=zoneById(c.dst);
+    row.innerHTML=`<span class="z">${a?a.name:c.src}</span><span class="arrow">→</span><span class="z">${b?b.name:c.dst}</span>`;
+    const rm=el('span','rm'); rm.textContent='✕';
+    rm.onclick=()=>{ removed.add(c.src+'>'+c.dst); conduits.splice(i,1); renderMatrix();renderConduits();genOutput();renderFindings(); };
+    row.appendChild(rm);
+    const svc=el('div','svc');
+    c.svcs.forEach(s=>{const sv=el('span','sv'+(SVC[s].clear?' clear':''));sv.textContent=`${SVC[s].n}:${SVC[s].port}`;svc.appendChild(sv);});
+    row.appendChild(svc);
+    if(c.flag){const f=el('div','flag '+c.severity);f.textContent=(c.severity==='high'?'✕ ':'△ ')+c.flag;row.appendChild(f);}
+    list.appendChild(row);
+  });
+}
+function refreshFlowSelectors(){
+  const s=$('#flowSrc'), d=$('#flowDst'); if(!s||!d)return;
+  const opt=z=>`<option value="${z.id}">${z.name}</option>`;
+  s.innerHTML=zones.map(opt).join(''); d.innerHTML=zones.map(opt).join('');
+}
+$('#flowAdd').onclick=()=>{
+  const src=$('#flowSrc').value, dst=$('#flowDst').value; if(src===dst)return;
+  if(conduits.some(c=>c.src===src&&c.dst===dst))return;
+  removed.delete(src+'>'+dst);
+  // default services = union of what dest assets listen on
+  const b=zoneById(dst); let svcs=[]; b.assets.forEach(a=>svcs.push(...(ASSET[a]?ASSET[a].listen:[]))); svcs=[...new Set(svcs)];
+  if(!svcs.length)svcs=['https'];
+  const cl=classify(src,dst);
+  conduits.push({src,dst,svcs,severity:cl.severity,flag:cl.flag}); sortConduits();
+  renderMatrix();renderConduits();genOutput();renderFindings();
+};
+
+// ---------- findings ----------
+function renderFindings(){
+  const list=$('#findingList'); list.innerHTML='';
+  const items=[];
+  const highs=conduits.filter(c=>c.severity==='high'), warns=conduits.filter(c=>c.severity==='warn');
+  highs.forEach(c=>items.push({s:'high',t:`<b>${zoneById(c.src).name} → ${zoneById(c.dst).name}:</b> ${c.flag}`}));
+  warns.forEach(c=>items.push({s:'warn',t:`<b>${zoneById(c.src).name} → ${zoneById(c.dst).name}:</b> ${c.flag}`}));
+  // cleartext note
+  const clear=conduits.filter(c=>c.svcs.some(s=>SVC[s].clear));
+  if(clear.length)items.push({s:'warn',t:`<b>${clear.length} conduit(s)</b> carry unauthenticated cleartext OT protocols — restrict to named hosts and monitor closely.`});
+  // is there a DMZ?
+  const dmz=zones.find(z=>Math.abs(z.lvl-3.5)<0.01);
+  if(!dmz)items.push({s:'high',t:`<b>No Industrial DMZ (L3.5).</b> Add a DMZ so IT and OT never talk directly — brokers, replicas and jump hosts live here.`});
+  // safety isolation ok?
+  const saf=zones.find(z=>z.assets.includes('sis'));
+  if(saf && !conduits.some(c=>c.dst===saf.id)) items.push({s:'ok',t:`<b>Safety zone isolated.</b> No conduits terminate in the SIS zone — keep it that way.`});
+  items.push({s:'ok',t:`<b>Deny-by-default.</b> Everything not listed above is blocked and logged by the generated policy.`});
+  items.forEach(it=>{const f=el('div','finding '+it.s);
+    f.innerHTML=`<span class="ic">${it.s==='high'?'HIGH':it.s==='warn'?'CHECK':'OK'}</span><span class="ft">${it.t}</span>`;
+    list.appendChild(f);});
+}
+
+// ---------- output generators ----------
+function zname(id){return (zoneById(id)?zoneById(id).name:id).replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function genPolicy(){ // readable matrix table
+  let out='OT SEGMENTATION POLICY  —  deny-by-default\n';
+  out+='generated by Rampart · IEC 62443 zones & conduits\n\n';
+  out+='ALLOWED CONDUITS\n';
+  out+='SOURCE ZONE            DEST ZONE              SERVICE (PORT)          NOTE\n';
+  out+='─'.repeat(92)+'\n';
+  conduits.forEach(c=>{ const a=zoneById(c.src),b=zoneById(c.dst);
+    c.svcs.forEach((s,i)=>{ const sv=SVC[s];
+      out+=pad(i?'':a.name,23)+pad(i?'':b.name,23)+pad(sv.n+' '+sv.proto+'/'+sv.port,24)+
+           (i?'':(c.severity==='high'?'VIOLATES BOUNDARY':c.severity==='warn'?'review':'ok'))+'\n';
+    });
+  });
+  out+='─'.repeat(92)+'\n';
+  out+='\nALL OTHER TRAFFIC: DENY + LOG\n';
+  return out;
+}
+function pad(s,n){s=String(s);return s.length>=n?s.slice(0,n-1)+' ':s+' '.repeat(n-s.length);}
+
+function svcName(s){const v=SVC[s];return v.n.replace(/[^A-Za-z0-9]/g,'')+'-'+v.port;}
+function aoName(id){return zname(id)+'-net';}
+function bitsToMask(b){b=parseInt(b,10);const m=[0,0,0,0];for(let i=0;i<b;i++)m[Math.floor(i/8)]|=1<<(7-i%8);return m.join('.');}
+function esc(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+function usedSvcs(){const s=new Set();conduits.forEach(c=>c.svcs.forEach(k=>s.add(k)));return [...s];}
+
+function genPalo(){
+  let out='# Palo Alto Networks — OT segmentation (deny-by-default)\n# Generated by Rampart. Zones = security zones; review before commit.\n\n';
+  out+='# --- address objects ---\n';
+  zones.forEach(z=>out+=`set address ${aoName(z.id)} ip-netmask ${z.net}\n`);
+  out+='\n# --- service objects ---\n';
+  usedSvcs().forEach(s=>{const v=SVC[s];out+=`set service svc-${svcName(s).toLowerCase()} protocol ${v.proto} port ${v.port}\n`;});
+  out+='\n# --- security policy ---\n';
+  conduits.forEach(c=>{ const a=zname(c.src),b=zname(c.dst);
+    const svcs=c.svcs.map(s=>'svc-'+svcName(s).toLowerCase()).join(' ');
+    out+=`set rulebase security rules "${a}-to-${b}" from ${a} to ${b} source ${aoName(c.src)} destination ${aoName(c.dst)} application any service [ ${svcs} ] action allow log-end yes\n`;
+  });
+  out+=`set rulebase security rules "deny-all" from any to any source any destination any application any service any action deny log-end yes\n`;
+  return out;
+}
+function genForti(){
+  let out='# FortiGate — OT segmentation (deny-by-default). Generated by Rampart.\n# Map each zone to its interface (edit the port-* names below) before applying.\n\n';
+  out+='config firewall address\n';
+  zones.forEach(z=>{const [ip,bits]=z.net.split('/');out+=`    edit "${aoName(z.id)}"\n        set subnet ${ip} ${bitsToMask(bits)}\n    next\n`;});
+  out+='end\n\nconfig firewall service custom\n';
+  usedSvcs().forEach(s=>{const v=SVC[s];out+=`    edit "${svcName(s)}"\n        set ${v.proto}-portrange ${v.port}\n    next\n`;});
+  out+='end\n\nconfig firewall policy\n';
+  conduits.forEach((c,i)=>{ const svcs=c.svcs.map(s=>`"${svcName(s)}"`).join(' ');
+    out+=`    edit ${i+1}\n        set name "${zname(c.src)}-to-${zname(c.dst)}"\n        set srcintf "port-${c.src}"\n        set dstintf "port-${c.dst}"\n        set srcaddr "${aoName(c.src)}"\n        set dstaddr "${aoName(c.dst)}"\n        set schedule "always"\n        set service ${svcs}\n        set action accept\n        set logtraffic all\n    next\n`;
+  });
+  out+=`    edit ${conduits.length+1}\n        set name "deny-all"\n        set srcintf "any"\n        set dstintf "any"\n        set srcaddr "all"\n        set dstaddr "all"\n        set schedule "always"\n        set service "ALL"\n        set action deny\n        set logtraffic all\n    next\nend\n`;
+  return out;
+}
+function genJuniper(){
+  let out='# Juniper SRX — OT segmentation (deny-by-default). Generated by Rampart.\n# Bind each zone to its interface(s) separately.\n\n';
+  zones.forEach(z=>out+=`set security zones security-zone ${zname(z.id)} address-book address ${aoName(z.id)} ${z.net}\n`);
+  out+='\n';
+  usedSvcs().forEach(s=>{const v=SVC[s];out+=`set applications application ${svcName(s)} protocol ${v.proto} destination-port ${v.port}\n`;});
+  out+='\n';
+  conduits.forEach(c=>{ const p=`${zname(c.src)}-to-${zname(c.dst)}`; const apps=c.svcs.map(svcName).join(' ');
+    out+=`set security policies from-zone ${zname(c.src)} to-zone ${zname(c.dst)} policy ${p} match source-address any destination-address any application [ ${apps} ]\n`;
+    out+=`set security policies from-zone ${zname(c.src)} to-zone ${zname(c.dst)} policy ${p} then permit\n`;
+    out+=`set security policies from-zone ${zname(c.src)} to-zone ${zname(c.dst)} policy ${p} then log session-init\n`;
+  });
+  out+='set security policies default-policy deny-all\n';
+  return out;
+}
+function genIptables(){
+  let out='#!/bin/sh\n# iptables — OT segmentation (deny-by-default). Generated by Rampart.\n\n';
+  out+='iptables -P FORWARD DROP\niptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT\n\n';
+  conduits.forEach(c=>{ const s=zoneById(c.src).net, d=zoneById(c.dst).net;
+    c.svcs.forEach(k=>{const v=SVC[k];
+      out+=`iptables -A FORWARD -s ${s} -d ${d} -p ${v.proto} --dport ${v.port} -m state --state NEW -j ACCEPT  # ${zoneById(c.src).name} -> ${zoneById(c.dst).name} (${v.n})\n`;
+    });
+  });
+  out+='\niptables -A FORWARD -j LOG --log-prefix "OT-SEG-DROP "\n';
+  return out;
+}
+function genAsa(){
+  let out='! Cisco ASA — OT segmentation (deny-by-default). Generated by Rampart.\n! Implicit deny at end of ACL blocks everything else.\n\n';
+  const mask=net=>{const b=parseInt(net.split('/')[1],10);const m=[0,0,0,0];for(let i=0;i<b;i++)m[Math.floor(i/8)]|=1<<(7-i%8);return net.split('/')[0].replace(/\.\d+$/,'.0')+' '+m.join('.');};
+  conduits.forEach(c=>{ c.svcs.forEach(k=>{const v=SVC[k];
+    out+=`access-list OT_SEG extended permit ${v.proto} ${mask(zoneById(c.src).net)} ${mask(zoneById(c.dst).net)} eq ${v.port}\n`;
+  });});
+  out+='access-list OT_SEG extended deny ip any any log\n';
+  return out;
+}
+function genJSON(){ return JSON.stringify({v:1,generator:"Rampart",zones,conduits:conduits.map(c=>({src:c.src,dst:c.dst,svcs:c.svcs,severity:c.severity}))},null,2); }
+const GEN={matrix:genPolicy,palo:genPalo,fortigate:genForti,juniper:genJuniper,iptables:genIptables,asa:genAsa,json:genJSON};
+function currentText(){return (GEN[tab]||genPolicy)();}
+function highlight(txt){
+  return txt.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))
+    .replace(/(#.*$|!.*$)/gm,'<span class="c">$1</span>')
+    .replace(/\b(action allow|ACCEPT|permit|allow)\b/g,'<span class="k">$1</span>')
+    .replace(/\b(action deny|DROP|deny|DENY|VIOLATES BOUNDARY)\b/g,'<span class="d">$1</span>');
+}
+function genOutput(){ $('#code').innerHTML = tab==='json' ? esc(currentText()) : highlight(currentText()); }
+
+// tabs
+const TABS=[["matrix","Policy"],["palo","Palo Alto"],["fortigate","FortiGate"],["juniper","Juniper"],["iptables","iptables"],["asa","Cisco ASA"],["json","JSON"]];
+const tabsEl=$('#tabs');
+TABS.forEach(([id,label])=>{const t=el('div','tab'+(id===tab?' on':''));t.textContent=label;t.dataset.t=id;
+  t.onclick=()=>{tab=id;[...tabsEl.children].forEach(x=>x.classList.toggle('on',x.dataset.t===id));genOutput();};
+  tabsEl.appendChild(t);});
+$('#copyBtn').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(currentText());$('#copyBtn').textContent='Copied';setTimeout(()=>$('#copyBtn').textContent='Copy',1200);};
+$('#dlBtn').onclick=()=>{const ext={matrix:'txt',palo:'conf',fortigate:'conf',juniper:'conf',iptables:'sh',asa:'txt',json:'json'}[tab]||'txt';
+  const blob=new Blob([currentText()],{type:'text/plain'});const u=URL.createObjectURL(blob);
+  const a=el('a');a.href=u;a.download='ot-segmentation-'+tab+'.'+ext;a.click();URL.revokeObjectURL(u);};
+
+// ---------- presets ----------
+const presetSel=$('#preset');
+Object.keys(PRESET_NAMES).forEach(k=>{const o=el('option');o.value=k;o.textContent=PRESET_NAMES[k];presetSel.appendChild(o);});
+presetSel.onchange=()=>{ zones=JSON.parse(JSON.stringify(PRESETS[presetSel.value])); removed=new Set(); refreshFlowSelectors(); renderAll(); };
+
+// ---------- import (CSV inventory / JSON model) ----------
+$('#importBtn').onclick=()=>$('#fileIn').click();
+$('#fileIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{loadImported(String(r.result));e.target.value='';}; r.readAsText(f);};
+function loadImported(text){
+  const t=text.trim();
+  if(t[0]==='{'||t[0]==='['){
+    try{ const o=JSON.parse(t);
+      if(o.zones){ zones=o.zones;
+        conduits=(o.conduits||[]).map(c=>({src:c.src,dst:c.dst,svcs:c.svcs||[],severity:classify(c.src,c.dst).severity,flag:classify(c.src,c.dst).flag}));
+        removed=new Set(); refreshFlowSelectors();
+        if(conduits.length){renderLoaded();}else{renderAll();}
+        return; }
+    }catch(err){ alert('Could not parse JSON model.'); return; }
+  }
+  importInventory(t);
+}
+function mapRole(r){ if(!r)return null;
+  const map=[['plc','plc'],['rtu','rtu'],['ied','rtu'],['hmi','hmi'],['scada','scada'],['historian','hist'],['hist','hist'],['workstation','ews'],['ews','ews'],['engineering','ews'],['jump','jump'],['patch','patch'],['wsus','patch'],['domain','ad'],['ad','ad'],['dns','ad'],['ntp','ntp'],['syslog','siem'],['siem','siem'],['bacnet','bas'],['bas','bas'],['bms','bms'],['safety','sis'],['sis','sis']];
+  for(const [k,v] of map){ if(r.includes(k))return v; } return null;
+}
+function ipInCidr(ip,cidr){ try{ const [net,bs]=cidr.split('/'); const bits=parseInt(bs,10);
+  const toInt=a=>a.split('.').reduce((x,o)=>((x<<8)+(+o))>>>0,0); const mask=bits===0?0:(0xffffffff<<(32-bits))>>>0;
+  return (toInt(ip)&mask)===(toInt(net)&mask);}catch(e){return false;} }
+function importInventory(text){
+  const rows=text.split(/\r?\n/).filter(x=>x.trim()); if(!rows.length)return;
+  const delim=rows[0].indexOf('\t')>=0?'\t':',';
+  const header=rows[0].toLowerCase().split(delim).map(s=>s.trim());
+  const hasHeader=header.some(h=>['ip','address','ipaddr','type','role','asset','device','zone'].includes(h));
+  let ipIdx=header.findIndex(h=>h==='ip'||h.includes('addr')), typeIdx=header.findIndex(h=>['type','role','asset','device'].includes(h)), zoneIdx=header.indexOf('zone');
+  if(!hasHeader){ipIdx=0;typeIdx=1;zoneIdx=-1;}
+  let added=0, disc=null;
+  for(let i=hasHeader?1:0;i<rows.length;i++){ const cols=rows[i].split(delim).map(s=>s.trim()); if(!cols.length)continue;
+    const ip=(cols[ipIdx]||'').split('/')[0]; const at=mapRole((cols[typeIdx]||'').toLowerCase()); if(!at)continue;
+    let z=null;
+    if(zoneIdx>=0&&cols[zoneIdx]) z=zones.find(zz=>zz.name.toLowerCase()===cols[zoneIdx].toLowerCase());
+    if(!z&&/^\d+\.\d+\.\d+\.\d+$/.test(ip)) z=zones.find(zz=>ipInCidr(ip,zz.net));
+    if(!z){ if(!disc){disc={id:uid(),name:"Discovered",lvl:3,net:(/^\d+\.\d+\.\d+\.\d+$/.test(ip)?ip.replace(/\.\d+$/,'.0')+'/24':'10.0.0.0/24'),assets:[]};zones.push(disc);} z=disc; }
+    if(!z.assets.includes(at)){z.assets.push(at);added++;}
+  }
+  refreshFlowSelectors(); removed=new Set(); renderAll();
+  alert(added?('Imported inventory — placed '+added+' asset type(s) into zones by subnet. Review zones, then Generate baseline.'):'No recognisable assets found. Use columns like:  ip,type[,zone]  (type = plc, hmi, scada, historian, ews, rtu, jump…).');
+}
+
+// ---------- share link ----------
+$('#shareBtn').onclick=()=>{ const model={v:1,zones,conduits:conduits.map(c=>({src:c.src,dst:c.dst,svcs:c.svcs}))};
+  try{ location.hash='m='+btoa(unescape(encodeURIComponent(JSON.stringify(model)))); }catch(e){}
+  if(navigator.clipboard)navigator.clipboard.writeText(location.href);
+  $('#shareBtn').textContent='Link copied'; setTimeout(()=>$('#shareBtn').textContent='Share link',1400); };
+function loadFromHash(){ const m=(location.hash||'').match(/m=([^&]+)/); if(!m)return false;
+  try{ const model=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if(model.zones){ zones=model.zones;
+      conduits=(model.conduits||[]).map(c=>({src:c.src,dst:c.dst,svcs:c.svcs||[],severity:classify(c.src,c.dst).severity,flag:classify(c.src,c.dst).flag}));
+      return true; } }catch(e){} return false; }
+
+// ---------- diagram (SVG) ----------
+function buildDiagramSVG(){
+  const W=1000, pad=26, laneH=62, gap=20, rail=760;
+  const sorted=[...zones].sort((a,b)=>b.lvl-a.lvl);
+  const H=pad*2 + sorted.length*(laneH+gap) - gap;
+  const yc={}; sorted.forEach((z,i)=>yc[z.id]=pad+i*(laneH+gap));
+  const laneRight=rail-40;
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  s+=`<defs>`+['#f2a24a','#e6b455','#e0512f'].map((c,i)=>`<marker id="ah${i}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="${c}"/></marker>`).join('')+`</defs>`;
+  s+=`<rect width="${W}" height="${H}" fill="#0e1214"/>`;
+  s+=`<text x="${pad}" y="16" fill="#565b55" font-family="IBM Plex Mono,monospace" font-size="10" letter-spacing="2">OT SEGMENTATION · PURDUE MODEL · IEC 62443 ZONES &amp; CONDUITS</text>`;
+  sorted.forEach(z=>{ const y=yc[z.id];
+    s+=`<rect x="${pad}" y="${y}" width="${laneRight-pad}" height="${laneH}" fill="#141a1c" stroke="#27302f"/>`;
+    s+=`<rect x="${pad}" y="${y}" width="6" height="${laneH}" fill="#f2a24a"/>`;
+    s+=`<text x="${pad+18}" y="${y+23}" fill="#ddd6c6" font-family="Saira Condensed,Arial,sans-serif" font-weight="700" font-size="16">L${z.lvl} · ${esc(z.name)}</text>`;
+    s+=`<text x="${pad+18}" y="${y+40}" fill="#8b877a" font-family="IBM Plex Mono,monospace" font-size="11">${esc(z.net)}</text>`;
+    const assets=z.assets.map(a=>ASSET[a]?ASSET[a].n:a).join('  ·  ')||'—';
+    s+=`<text x="${pad+18}" y="${y+55}" fill="#565b55" font-family="IBM Plex Mono,monospace" font-size="10">${esc(assets)}</text>`;
+  });
+  conduits.forEach((c,i)=>{ if(!yc[c.src]&&yc[c.src]!==0)return; if(!(c.dst in yc))return;
+    const y1=yc[c.src]+laneH/2, y2=yc[c.dst]+laneH/2;
+    const bow=rail+ (i%9)*22; const mi=c.severity==='high'?2:c.severity==='warn'?1:0; const col=['#f2a24a','#e6b455','#e0512f'][mi];
+    s+=`<path d="M ${laneRight} ${y1} C ${bow} ${y1}, ${bow} ${y2}, ${laneRight} ${y2}" fill="none" stroke="${col}" stroke-width="1.3" opacity="0.85" marker-end="url(#ah${mi})"/>`;
+  });
+  s+=`</svg>`; return s;
+}
+$('#diagBtn').onclick=()=>{ $('#diagSvg').innerHTML=buildDiagramSVG(); $('#diagModal').classList.remove('hidden'); };
+$('#diagClose').onclick=()=>$('#diagModal').classList.add('hidden');
+$('#diagModal').addEventListener('click',e=>{if(e.target.id==='diagModal')$('#diagModal').classList.add('hidden');});
+$('#diagDl').onclick=()=>{ const blob=new Blob([$('#diagSvg').innerHTML],{type:'image/svg+xml'});const u=URL.createObjectURL(blob);
+  const a=el('a');a.href=u;a.download='ot-segmentation-diagram.svg';a.click();URL.revokeObjectURL(u); };
+
+// ---------- printable policy document ----------
+$('#docBtn').onclick=()=>{ $('#printdoc').innerHTML=buildDoc(); window.print(); };
+function buildDoc(){
+  const d=new Date().toISOString().slice(0,10);
+  const th='style="text-align:left;border-bottom:1px solid #999;padding:4px 6px"', td='style="border-bottom:1px solid #ddd;padding:4px 6px;vertical-align:top"';
+  let h=`<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:860px;margin:0 auto;line-height:1.45">`;
+  h+=`<h1 style="font-size:23px;margin:0 0 2px">OT Network Segmentation Policy</h1>`;
+  h+=`<p style="color:#555;font-size:12px;margin:0 0 14px">Generated by Rampart · ${d} · deny-by-default · aligned to IEC 62443 zones &amp; conduits and the Purdue model</p>`;
+  h+=`<h2 style="font-size:15px;border-bottom:2px solid #111;padding-bottom:3px">Zones</h2><table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px"><tr><th ${th}>Zone</th><th ${th}>Level</th><th ${th}>Subnet</th><th ${th}>Assets</th></tr>`;
+  [...zones].sort((a,b)=>b.lvl-a.lvl).forEach(z=>h+=`<tr><td ${td}>${esc(z.name)}</td><td ${td}>L${z.lvl}</td><td ${td}>${esc(z.net)}</td><td ${td}>${esc(z.assets.map(a=>ASSET[a]?ASSET[a].n:a).join(', '))}</td></tr>`);
+  h+=`</table>`;
+  h+=`<h2 style="font-size:15px;border-bottom:2px solid #111;padding-bottom:3px">Allowed conduits</h2><table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px"><tr><th ${th}>Source</th><th ${th}>Destination</th><th ${th}>Services (port)</th><th ${th}>Note</th></tr>`;
+  conduits.forEach(c=>{const note=c.severity==='high'?'VIOLATES BOUNDARY':c.severity==='warn'?'review':'ok';
+    h+=`<tr><td ${td}>${esc(zoneById(c.src).name)}</td><td ${td}>${esc(zoneById(c.dst).name)}</td><td ${td}>${c.svcs.map(s=>SVC[s].n+':'+SVC[s].port).join(', ')}</td><td ${td}>${note}</td></tr>`;});
+  h+=`</table><p style="font-size:12px;font-weight:bold">All other traffic: deny and log.</p>`;
+  const highs=conduits.filter(c=>c.severity==='high'), warns=conduits.filter(c=>c.severity==='warn');
+  h+=`<h2 style="font-size:15px;border-bottom:2px solid #111;padding-bottom:3px">Findings</h2><ul style="font-size:12px;margin-top:6px">`;
+  highs.forEach(c=>h+=`<li><b>HIGH — ${esc(zoneById(c.src).name)} → ${esc(zoneById(c.dst).name)}:</b> ${esc(c.flag)}</li>`);
+  warns.forEach(c=>h+=`<li><b>CHECK — ${esc(zoneById(c.src).name)} → ${esc(zoneById(c.dst).name)}:</b> ${esc(c.flag)}</li>`);
+  if(!highs.length&&!warns.length)h+=`<li>No boundary violations detected in the current design.</li>`;
+  h+=`<li>Deny-by-default: everything not explicitly listed is blocked and logged.</li></ul>`;
+  h+=`<h2 style="font-size:15px;border-bottom:2px solid #111;padding-bottom:3px">IEC 62443-3-3 references</h2><ul style="font-size:12px;margin-top:6px"><li>SR 5.1 — Network segmentation</li><li>SR 5.2 — Zone boundary protection</li><li>SR 5.3 — General-purpose communication restrictions</li><li>SR 7.6 — Network and security configuration settings</li></ul>`;
+  h+=`<p style="color:#777;font-size:11px;margin-top:16px">A reviewed starting point — validate every rule against your process and addressing before deployment. Part of the GNSAC OT toolkit.</p></div>`;
+  return h;
+}
+window.addEventListener('keydown',e=>{if(e.key==='Escape')$('#diagModal').classList.add('hidden');});
+
+// ---------- boot ----------
+function renderAll(){renderZones();deriveBaseline();renderMatrix();renderConduits();renderFindings();genOutput();}
+function renderLoaded(){renderZones();sortConduits();renderMatrix();renderConduits();renderFindings();genOutput();}
+$('#genBtn').onclick=()=>{removed=new Set();renderAll();};
+refreshFlowSelectors();
+if(loadFromHash()){ refreshFlowSelectors(); renderLoaded(); } else { renderAll(); }
+</script>
+</body>
+</html>
