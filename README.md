@@ -1,5 +1,7 @@
 # 🧱 RAMPART
 
+![Rampart Demo](docs/rampart_demo.gif)
+
 ### Describe your OT zones. Get a deny-by-default segmentation policy — as real firewall rules.
 
 **[▶ Open Rampart](https://bariskececi.github.io/rampart/)** · no install, nothing is uploaded, runs entirely in your browser.
@@ -28,6 +30,8 @@ Deny-by-default, with every allowed flow scoped to a source, destination, protoc
 and port. Copy it, download it, take it into your change process.
 
 ## More than a rule generator
+
+![Rampart Dashboard](docs/rampart_hero_2.png)
 
 - **Industry templates** — start from a Water/Wastewater, Power substation,
   Manufacturing or Building-automation layout, or the plain Purdue/62443 default.
